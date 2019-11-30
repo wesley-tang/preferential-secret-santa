@@ -1,29 +1,48 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.Scanner;
 
 public class Pairer {
+	// Name of the file containing users to match
+	private static final String FILE_NAME = "./input/signups_tierA.tsv";
+
+	// Name = 0, ID# = 1, Draw = 2, Receive = 3, Backup? = 4, Post Link = 5
+	private static final int NAME_INDEX = 0;
+	private static final int ID_INDEX = 1;
+	private static final int DRAW_INDEX = 2;
+	private static final int RECEIVE_INDEX = 3;
+	private static final int BACKUP_INDEX = 4;
+	private static final int REF_INDEX = 5;
+	
+	private static int perfectMatches = 0;
 
 	public static void main(String[] args) {
-		Scanner in = new Scanner(System.in);
+		ArrayList<String[]> responses = new ArrayList<String[]>();
+
+		responses = load();
 		
-		int N = in.nextInt();
-		Person[] people = new Person[N];
+		Person[] people = new Person[responses.size()];
 		ArrayList<Person> needMatch = new ArrayList<Person>();
 		
-		in.nextLine();
-		
-		for (int i = 0; i < N; i++) {
+		for (int i = 0; i < responses.size(); i++) {
 			char[] drawPref = new char[4];
 			char[] recPref = new char[4];
 			
-			String d = in.nextLine();
-			String r = in.nextLine();
+			drawPref = responses.get(i)[DRAW_INDEX].toCharArray();
+			recPref = responses.get(i)[RECEIVE_INDEX].toCharArray();
 			
-			drawPref = d.replaceAll(" ", "").toCharArray();
-			recPref = r.replaceAll(" ", "").toCharArray();
+			people[i] = new Person(
+					i,
+					responses.get(i)[NAME_INDEX],
+					Integer.parseInt(responses.get(i)[ID_INDEX]),
+					drawPref,
+					recPref,
+					-1,
+					-1,
+					responses.get(i)[BACKUP_INDEX].equals("Yes"),
+					responses.get(i)[REF_INDEX]);
 			
-			people[i] = new Person(i, drawPref, recPref, -1, -1);
 			needMatch.add(people[i]);
 		}
 		
@@ -63,14 +82,36 @@ public class Pairer {
 			if (isFinishedMatch(pick.b)) {
 				needMatch.remove(pick.b);
 			}
+			
+			if (pick.a.drawPref[0] == pick.b.recPref[0]) perfectMatches++;
+			else if (pick.a.drawPref[0] == pick.b.recPref[3] && pick.a.drawPref[0] != 'n'){
+				System.out.print("FAILED MATCH");
+				
+				System.out.println(pick.a.name + " draws for " + pick.b.name);
+				System.out.println("draw pref:" + arrToString(pick.a.drawPref));
+				System.out.println("rec pref:" + arrToString(pick.b.recPref) + "\n");
+				
+			}
+			else {
+				System.out.print("mediocre matches:");
+				
+				System.out.println(pick.a.name + " draws for " + pick.b.name);
+				System.out.println("draw pref:" + arrToString(pick.a.drawPref));
+				System.out.println("rec pref:" + arrToString(pick.b.recPref) + "\n");
+				
+			}
+
+			System.out.print("----\n");
+			
 		}
 		
 		for (Person p : people) {
-			System.out.println((p.id + 1) + " draws for " + (p.drawFor + 1));
+			System.out.println(p.name + " draws for " + people[p.drawFor].name);
 			System.out.println("draw pref:" + arrToString(p.drawPref));
-			System.out.println("rec pref:" + arrToString(people[p.drawFor].recPref));
+			System.out.println("rec pref:" + arrToString(people[p.drawFor].recPref) + "\n");
 		}
 		
+		System.out.println("Match rate: " + perfectMatches + "/" + people.length);
 	}
 	
 	private static String arrToString(char[] a) {
@@ -88,8 +129,15 @@ public class Pairer {
 		return a.drawFor >= 0 && a.recFrom >= 0;
 	}
 	
-	private static boolean canMatch(Person a, Person b) {
-		return a.drawFor == -1 && b.recFrom == -1 && a.id != b.id;
+	private static boolean canMatch(Person a, Person b) {		
+		if (a.name.equals("Hexlash") && (b.name.equals("Lizzi") || b.name.equals("FightingPolygon")) ||
+			a.name.equals("FightingPolygon") && (b.name.equals("Lizzi") || b.name.equals("Hexlash")) ||
+			a.name.equals("Lizzi") && (b.name.equals("Hexlash") || b.name.equals("FightingPolygon")))
+			return false;
+			
+		return a.drawFor == -1 &&
+				b.recFrom == -1 &&
+				a.id != b.id;
 	}
 	
 	private static int fwert(Person a, Person b) {
@@ -180,17 +228,25 @@ public class Pairer {
 	
 	private static class Person {
 		int id;
+		String name;
+		int userId;
 		char[] drawPref;
 		char[] recPref;
 		int drawFor;
 		int recFrom;
+		boolean backup;
+		String refURL;
 		
-		Person(int id, char[] drawPref, char[] recPref, int drawFor, int recFrom) {
+		Person(int id, String name, int userId, char[] drawPref, char[] recPref, int drawFor, int recFrom, boolean backup, String refURL) {
 			this.id = id;
+			this.name = name;
+			this.userId = userId;
 			this.drawPref = drawPref;
 			this.recPref = recPref;
 			this.drawFor = drawFor;
 			this.recFrom = recFrom;
+			this.backup = backup;
+			this.refURL = refURL;
 		}
 	}
 	
@@ -202,6 +258,26 @@ public class Pairer {
 			this.a = a;
 			this.b = b;
 		}
+	}
+
+	// Load the responses from the file
+	private static ArrayList<String[]> load() {
+		ArrayList<String[]> responses = new ArrayList<String[]>();
+
+		BufferedReader in;
+
+		String line = "";
+		try {
+			in = new BufferedReader(new FileReader(FILE_NAME));
+
+			while ((line = in.readLine()) != null) {
+				responses.add(line.split("\t"));
+			}
+			in.close();
+		} catch (Exception e) {
+			System.out.println("ERROR LOADING FILE");
+		}
+		return responses;
 	}
 
 }
