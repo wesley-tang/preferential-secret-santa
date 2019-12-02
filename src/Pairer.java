@@ -7,7 +7,7 @@ import java.util.Random;
 
 public class Pairer {
     // Name of the file containing users to match
-    private static final String FILE_NAME = "./input/signups_tier%s.tsv";
+    private static final String FILE_NAME = "./signups_tier%s.tsv";
 
     // Name = 0, ID# = 1, Draw = 2, Receive = 3, Backup (unused), Post Link = 5
     private static final int NAME_INDEX = 0;
@@ -17,11 +17,13 @@ public class Pairer {
     private static final int REF_INDEX = 5;
 
     private static int perfectMatches;
+    private static String tier;
 
     private static boolean failing = true;
 
     public static void main(String[] args) {
-        ArrayList<String[]> responses = load(args[0]);
+        tier = args[0];
+        ArrayList<String[]> responses = load();
 
         Person[] people = null;
 
@@ -261,7 +263,7 @@ public class Pairer {
     }
 
     // Load the responses from the file
-    private static ArrayList<String[]> load(String tier) {
+    private static ArrayList<String[]> load() {
         ArrayList<String[]> responses = new ArrayList<String[]>();
 
         BufferedReader in;
@@ -276,6 +278,7 @@ public class Pairer {
             in.close();
         } catch (Exception e) {
             System.out.println("ERROR LOADING FILE");
+            e.printStackTrace();
         }
         return responses;
     }
@@ -286,21 +289,21 @@ public class Pairer {
 
         try {
             // Write matchups file
-            out = new BufferedWriter(new FileWriter("./matchups_NAMES_ONLY.txt"));
+            out = new BufferedWriter(new FileWriter(String.format("./matchups_tier%s_NAMES_ONLY.txt", tier)));
             for (Person p : people) {
                 out.write(p.name + " -> " + people[p.drawFor].name + "\n");
             }
             out.close();
 
             // Write preference matchups file
-            out = new BufferedWriter(new FileWriter("./matchups_PREF_ONLY.txt"));
+            out = new BufferedWriter(new FileWriter(String.format("./matchups_tier%s_PREF_ONLY.txt", tier)));
             for (Person p : people) {
                 out.write("Artist: " + String.valueOf(p.drawPref) + " > Recipient: " + String.valueOf(people[p.drawFor].recPref) + "\n");
             }
             out.close();
 
             // Write matchups with ID numbers
-            out = new BufferedWriter(new FileWriter("./matchups_NAMES_ID.txt"));
+            out = new BufferedWriter(new FileWriter(String.format("./matchups_tier%s_NAMES_ID.txt", tier)));
             for (Person p : people) {
                 out.write("Artist: " + p.name + " -" + p.userId + "-  > Recipient: " + people[p.drawFor].name + " -"
                         + people[p.drawFor].userId + "-\n");
@@ -308,7 +311,7 @@ public class Pairer {
             out.close();
 
             // Write matchups for the Python Script auto message
-            out = new BufferedWriter(new FileWriter("./matchups.tsv"));
+            out = new BufferedWriter(new FileWriter(String.format("./matchups_tier%s.tsv", tier)));
             for (Person p : people) {
                 out.write(p.name + "\t" + "flightrising.com/main.php?p=lair&tab=userpage&id=" + people[p.drawFor].userId + "\t" + people[p.drawFor].name + "\t"
                         + people[p.drawFor].refURL + "\n");
